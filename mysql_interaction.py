@@ -24,38 +24,59 @@ def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], Non
     except IndexError:
         print('База данных отсутствует')
         return None
+    finally:
+        connection.close()
 
 
 class PopulateDB:
-    def __init__(self, db_url: str):
-        self.db_url = db_url
-        self.db_name = make_url(self.db_url).database
+    def __init__(self, db_name: str):
+        self.db_name = db_name
+        self.db_url = fr'mysql+mysqlconnector://{USER}:{PASSWORD}@{HOST}/{self.db_name}'
+        self.temp_db_url = fr'mysql+mysqlconnector://{USER}:{PASSWORD}@{HOST}/'
         self.engine = create_engine(self.db_url, echo=False)
+        self.temp_engine = create_engine(self.temp_db_url, echo=False)
+
+    def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], None]:
+        """
+            Проверяет, существует ли база данных на сервере MySQL.
+            """
+        try:
+            temp_db_url = fr'mysql+mysqlconnector://{USER}:{PASSWORD}@{HOST}'
+            temp_engine = create_engine(temp_db_url, echo=False)
+            with temp_engine.connect() as connection:
+                blitz_db_name = f'chess_blitz_{username}'
+                rapid_db_name = f'chess_rapid_{username}'
+                query = text("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = :db_name")
+                if connection.execute(query, {"db_name": blitz_db_name}).fetchone() is not None:
+                    return 'blitz'
+                elif connection.execute(query, {"db_name": rapid_db_name}).fetchone() is not None:
+                    return 'rapid'
+        except IndexError:
+            print('База данных отсутствует')
+            return None
 
     def create_database(self):
         """
         Создаёт базу данных, если она не существует.
         """
         try:
-            # Подключение к серверу MySQL без указания базы данных
-            temp_db_url = self.db_url.rsplit('/', 1)[0] + '/'
-            temp_engine = create_engine(temp_db_url, echo=False)
-            with temp_engine.connect() as connection:
+            with self.temp_engine.connect() as connection:
                 connection.execute(text(f"CREATE DATABASE IF NOT EXISTS {self.db_name}"))
             print(f"База данных '{self.db_name}' успешно создана или уже существует.")
         except exc.SQLAlchemyError as e:
             print(f'Ошибка при создании базы данных: {e}')
+        finally:
+            connection.close()
 
     def drop_database(self):
         try:
-            # Подключение к серверу MySQL без указания базы данных
-            temp_db_url = self.db_url.rsplit('/', 1)[0] + '/'
-            temp_engine = create_engine(temp_db_url, echo=False)
-            with temp_engine.connect() as connection:
+            with self.temp_engine.connect() as connection:
                 connection.execute(text(f"DROP DATABASE IF EXISTS {self.db_name}"))
             print(f"База данных '{self.db_name}' успешно удалена.")
         except exc.SQLAlchemyError as e:
             print(f'Ошибка при базы данных: {e}')
+        finally:
+            connection.close()
 
     def save_df(self, chess_df_users: DataFrame, chess_games_info: DataFrame, games_by_moves: DataFrame):
         """

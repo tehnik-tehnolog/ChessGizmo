@@ -21,9 +21,10 @@ class BaseData:
                                                  'opening_STDPL_by_cauchy', 'mittelspiel_and_endgame_STDPL_by_cauchy'])
         self.moves_df = pd.DataFrame(columns=['id_game', 'move_number',
                                               'white_move', 'black_move',  'white_move_index',  'black_move_index',
-                                              'analysis', 'CP_loss', 'CP_loss_by_cauchy', 'pieces_material', 'pawns',
-                                              'game_phase', 'mobility_increment', 'mobility_decrement',
-                                              'control', 'king_safety', 'king_openness', 'knight_activity_coeff',
+                                              'white_move_is_capture', 'black_move_is_capture', 'analysis',
+                                              'CP_loss', 'CP_loss_by_cauchy', 'pieces_material', 'pawns','game_phase',
+                                              'mobility_increment', 'mobility_decrement','control',
+                                              'king_safety', 'king_openness', 'knight_activity_coeff',
                                               'bishop_activity_coeff', 'rook_and_queen_activity_coeff'])
 
 
@@ -116,6 +117,7 @@ class ChesscomData(BaseData):
         board = ModBoard()
         for ply, move in enumerate(list(game_pgn.mainline_moves())):
             side = board.board.turn
+            is_capture = board.board.is_capture(move)
             board.push_move(move)
             m_len = self.moves_df.index.size - 1  # length
 
@@ -125,6 +127,7 @@ class ChesscomData(BaseData):
                 self.moves_df.at[m_len, 'move_number'] = int((ply + 2) / 2)
                 self.moves_df.at[m_len, f'{main_color}_move'] = move.uci()
                 self.moves_df.at[m_len, f'{main_color}_move_index'] = move.to_square
+                self.moves_df.at[m_len, f'{main_color}_move_is_capture'] = is_capture
                 # ------------------------------------------------------------------------------------------------
                 board.comp_CP_analysis()
                 self.moves_df.at[m_len, 'analysis'] = board.analysis
@@ -157,6 +160,7 @@ class ChesscomData(BaseData):
                 enemy_color = self.opposite(main_color)
                 self.moves_df.at[m_len, f'{enemy_color}_move'] = self.enemy_move
                 self.moves_df.at[m_len, f'{enemy_color}_move_index'] = move.to_square
+                self.moves_df.at[m_len, f'{main_color}_move_is_capture'] = is_capture
                 board.mobility()
                 board.comp_CP_analysis()
 

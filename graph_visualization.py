@@ -13,9 +13,16 @@ import matplotlib.image as mpimg
 from plotnine import *
 # from functools import reduce
 # from chess import SQUARE_NAMES
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+import chess
+import chess.svg
+import cairosvg
+from io import BytesIO
+import matplotlib.image as mpimg
 
 
-class PieChart:
+
+class PieChartXXX:
     def __init__(self, input_array, threshold, layer) -> None:
         self.input_array = input_array
         self.threshold = threshold
@@ -142,7 +149,8 @@ class PieChart:
         else:
             self.plys_sequence_array = np.array([square_layer])
             cmap = ListedColormap(self.colors)
-            custom_colors = cmap(list(range(len(square_layer) - 1)))
+            custom_colors = cmap(list(range(len(square_layer))))
+            #custom_colors = cmap(list(range(len(square_layer) - 1)))
             self.pred_cmap = custom_colors
             self.cmap_array = [custom_colors]
 
@@ -173,6 +181,232 @@ class PieChart:
             result = np.insert(result, c, result[:, p], axis=1)
 
         return result
+
+
+class PieChart:
+    def __init__(self, input_array, threshold, layer) -> None:
+        self.input_array = input_array
+        self.threshold = threshold
+        self.layer = layer
+        self.other_value = 0
+        self.other_values = deque()
+        self.column_idx = 0
+        self.colors = ['#67B99A', '#F9844A', '#8187DC', '#FF7096', '#669BBC', '#BC4749',
+                       '#80ED99', '#FFD133', '#CE4257', '#48cae4', '#A7C957', '#E6BEAE',
+                       '#2196F3', '#5C677D', '#AD2831', '#606C38', '#FF5C8A']
+        self.transparent_color = np.array([1.0, 1.0, 1.0, 0.0])
+
+        self.square_names = [[None], ]
+        self.values_array = []
+        self.repetitions_list = [0]
+        self.plys_sequence_array = []
+        self.cmap_array = []
+        self.condition_list = []
+
+        self.create_pie_chart()
+        self.adjust_colors()
+
+    def quicksort_dict(self, dict_):
+        if len(dict_) <= 1:
+            return dict_
+        pivot = list(dict_.items())[len(dict_) // 2][1]
+        left = {}
+        middle = {}
+        right = {}
+        for key, value in dict_.items():
+            if value > self.threshold:
+                if value > pivot:
+                    left[key] = value
+                elif value == pivot:
+                    middle[key] = value
+                elif value < pivot:
+                    right[key] = value
+            elif value <= self.threshold:
+                self.other_value += value
+
+        sorted_left = self.quicksort_dict(left)
+        sorted_right = self.quicksort_dict(right)
+        sorted_dict = {**sorted_left, **middle, **sorted_right}
+
+        return sorted_dict
+
+    def create_pie_chart(self):
+        while self.input_array.shape[0] > self.column_idx and self.column_idx < self.layer:
+            square_name_layer = []
+            values_layer = []
+            for square_idx, square_name in enumerate(self.square_names[-1]):
+                if square_name != '~':
+                    if self.column_idx == 0:
+                        ply_fetch = self.input_array[:, 0]
+                        self.square_names.pop()
+                    else:
+                        ply_fetch = self.get_fetch(self.input_array, square_idx)
+                    ply_counter = Counter(ply_fetch)
+                    ply_counter = self.quicksort_dict(ply_counter)
+
+                    square_name_layer.extend(list(ply_counter.keys()))
+                    values_layer.extend(list(ply_counter.values()))
+
+                    if self.other_value:
+                        self.other_values.append(self.other_value)
+                        square_name_layer.append('~')
+                        values_layer.append(self.other_value)
+                        self.other_value = 0
+
+                elif square_name == '~':  # and self.other_values:
+                    square_name_layer.append('~')
+                    values_layer.append(self.other_values[0])
+                    self.other_values.append(self.other_values[0])
+                    self.other_values.popleft()
+
+            self.square_names.append(square_name_layer)
+            self.values_array.append(values_layer)
+
+            self.insert_new_row(square_name_layer)
+            self.cmap_array[-1] = np.array(list(
+                map(lambda x, con: self.transparent_color if con == '~' else x, self.cmap_array[-1],
+                    square_name_layer)))
+            self.repetitions_list = [0]
+
+            self.pred_square_names = deque(square_name_layer)
+            self.pred_values = deque(values_layer)
+
+            self.column_idx += 1
+
+    def add_to_condition_list(self, value, idx):
+        if self.condition_list:
+            self.condition_list[idx - 1] = value
+            self.condition_list = self.condition_list[:idx]
+        else:
+            self.condition_list.append(value)
+
+    def get_fetch(self, array, square_idx):
+        mask = None
+        condition_list = self.plys_sequence_array[:, square_idx]
+        for idx, condition in enumerate(condition_list):
+            if idx == 0:
+                mask = array[:, idx] == condition
+            else:
+                mask &= array[:, idx] == condition
+        return array[mask][:, len(condition_list)]
+
+    def insert_new_row(self, square_layer):
+        if self.column_idx:
+            col = []
+            pred_col = []
+            pred_array = None
+            for i, n in enumerate(self.repetitions_list):
+                for _ in range(n):
+                    col.append(i + 1)
+                    pred_col.append(i)
+            pred_array = np.insert(self.plys_sequence_array, col, self.plys_sequence_array[:, pred_col], axis=1)
+            self.pred_cmap = np.insert(self.pred_cmap, col, self.pred_cmap[pred_col, :], axis=0)
+            self.plys_sequence_array = np.vstack([pred_array, square_layer])
+            self.cmap_array.append(self.pred_cmap)
+        else:
+            self.plys_sequence_array = np.array([square_layer])
+            cmap = ListedColormap(self.colors)
+            custom_colors = cmap(list(range(len(square_layer))))
+            self.pred_cmap = custom_colors
+            self.cmap_array = [custom_colors]
+
+    def reduce_row_values(self, pred_row, value, skip_values=0):
+        if pred_row[0]:
+            pred_row[0] -= value
+            return skip_values
+        else:
+            pred_row.popleft()
+            skip_values += 1
+            return self.reduce_row_values(pred_row, value, skip_values)
+
+    def get_repetitions_list(self, value):
+        if self.column_idx:
+            self.pred_values[0] -= value
+            if self.pred_values[0]:
+                self.repetitions_list[-1] += 1
+            else:
+                self.pred_square_names.popleft()
+                self.pred_values.popleft()
+                self.repetitions_list.append(0)
+
+    def adjust_colors(self):
+        """
+        Корректирует цвета для каждого четного слоя, делая их чуть темнее.
+        """
+        for i in range(len(self.cmap_array)):
+            if i % 2 == 1:  # Четные слои (индексы 1, 3, 5 и т.д.)
+                self.cmap_array[i] = self.cmap_array[i] * 0.8  # Уменьшаем яркость на 20%
+                self.cmap_array[i][:, 3] = 1.0  # Сохраняем альфа-канал (прозрачность)
+
+
+class OpeningTree(PieChart):
+    def __init__(self, input_array:np.array, threshold:int, layer:int, user_name:str, turn:str):
+        super().__init__(input_array, threshold, layer)
+        self.user_name = user_name
+        self.turn = turn
+        self.popular_opening = [row[0] for row in self.square_names if len(row) > 0]
+        self.background = '#111111'
+        self.visualize()
+
+    def draw_chess_board(self, board:chess.Board):
+        style = {
+            'size': 200,  # Размер меньше для встраивания в диаграмму
+            'coordinates': False,
+            'colors': {
+                'square light': '#f0d9b5',
+                'square dark': '#b58863',
+                'square light lastmove': '#a9a9a9',
+                'square dark lastmove': '#696969',
+                'square light check': '#aa3333',
+                'square dark check': '#aa1111'
+            }
+        }
+        svg = chess.svg.board(board=board, size=style['size'], coordinates=style['coordinates'], colors=style['colors'])
+        png = cairosvg.svg2png(bytestring=svg)
+        image = mpimg.imread(BytesIO(png), format='png')
+        return image
+
+    def visualize(self):
+        """
+        Визуализирует диаграмму и шахматную доску.
+        """
+        # Создаем доску и применяем ходы
+        board = chess.Board()
+        for ply in self.popular_opening:
+            board.push_san(ply)
+
+        fig, ax = plt.subplots()
+        size = 0.25
+        delta = 0.22
+
+        for row in range(5):
+            wedges, texts = ax.pie(self.values_array[row], radius=1 + row * delta, colors=self.cmap_array[row],
+                                   wedgeprops=dict(width=size, edgecolor=self.background), startangle=90, counterclock=False, normalize=True)
+
+            for i, p in enumerate(wedges):
+                ang = (p.theta2 - p.theta1) / 2. + p.theta1
+                y = np.sin(np.deg2rad(ang))
+                x = np.cos(np.deg2rad(ang))
+                connectionstyle = 'angle,angleA=0,angleB={}'.format(ang)
+                ax.annotate(self.square_names[row][i][2:4], xy=(x, y), xytext=(x * (1 + row * delta - 0.17), y * (1 + row * delta - 0.17)),
+                            horizontalalignment='center', verticalalignment='center')
+
+        # Рисуем шахматную доску и размещаем в центре диаграммы
+        chess_board_image = self.draw_chess_board(board)
+        imagebox = OffsetImage(chess_board_image, zoom=0.64)
+        ab = AnnotationBbox(imagebox, (0.5, 0.5), frameon=False, boxcoords='axes fraction', pad=0.5)
+        ax.add_artist(ab)
+
+        ax.set_title(
+            f'Opening Tree for {self.turn}',
+            y=1.3,
+            fontsize=16,
+            fontweight='bold',
+            fontfamily='sans-serif',
+            color='white',
+        )
+        ax.set(aspect='equal')
+        plt.savefig(f'./user_data/final_images/{self.user_name}/PieChart_for_{self.turn}.png', bbox_inches='tight', facecolor=self.background)
 
 
 class HeatBoard:
@@ -262,21 +496,22 @@ class MarkedRaincloud:
         self.iter_color = iter(self.JACE_COLOR)
         self.delta_tick = 0.4
 
-        self.pieces_param_schema = pd.DataFrame(columns=['piece_param', 'value'])
+        self.pieces_param_schema = pd.DataFrame(columns=['parameters', 'value'])
         self.pieces_param_schema['value'] = self.pieces_param_schema['value'].astype(np.int64)
         self.populate_pieces_param_schema()
         self.draw_raincloud()
 
     def populate_pieces_param_schema(self):
         for col in self.pieces_param_sample.columns:
-            one_piece_param_sample = self.pieces_param_sample[col].to_frame()
-            one_piece_param_sample['piece_param'] = col
-            one_piece_param_sample = one_piece_param_sample.rename(columns={col: 'value'})
-            self.pieces_param_schema = pd.concat([self.pieces_param_schema, one_piece_param_sample], ignore_index=True)
+            one_parameters_sample = self.pieces_param_sample[col].to_frame()
+            one_parameters_sample['parameters'] = col
+            one_parameters_sample = one_parameters_sample.rename(columns={col: 'value'})
+            self.pieces_param_schema = pd.concat([self.pieces_param_schema, one_parameters_sample], ignore_index=True)
 
     def draw_raincloud(self):
-        raincloud = (ggplot(self.pieces_param_schema, aes(x='piece_param', y='value', fill='piece_param'))
-                     + geom_point(aes(color='piece_param'), position=position_jitter(width=0.15), size=0.5, alpha=0.5)
+        game_phase_decr = 'mittelspiel & endgame' if self.game_phase == 'mittelspiel_endgame' else self.game_phase
+        raincloud = (ggplot(self.pieces_param_schema, aes(x='parameters', y='value', fill='parameters'))
+                     + geom_point(aes(color='parameters'), position=position_jitter(width=0.15), size=0.5, alpha=0.5)
                      + geom_boxplot(width=0.25, outlier_shape='', alpha=0.6)
                      + geom_violin(position=position_nudge(x=0), alpha=0.2, adjust=0.5)
                      + geom_segment(
@@ -307,7 +542,7 @@ class MarkedRaincloud:
                      # + guides(fill=guide_legend(title=''), color=guide_legend(title=''))
                      + guides(fill=guide_legend(), color=guide_legend())
                      + labs(x='',
-                            title=f'Your activity figures among the distribution\n by rating {self.main_rating} in {self.game_phase}')
+                            title=f'Your activity figures among the distribution\n by rating {self.main_rating} in {game_phase_decr}')
                      + theme_classic()
                      + theme(legend_position='bottom'))
 
