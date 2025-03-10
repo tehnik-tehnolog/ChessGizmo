@@ -19,6 +19,7 @@ import chess.svg
 import cairosvg
 from io import BytesIO
 import matplotlib.image as mpimg
+from config import PROJECT_PATH
 
 
 
@@ -42,6 +43,8 @@ class PieChartXXX:
         self.cmap_array = []
 
         self.condition_list = []
+
+        self.func()
 
     def quicksort_dict(self, dict_):
         if len(dict_) <= 1:
@@ -100,7 +103,6 @@ class PieChartXXX:
             self.values_array.append(values_layer)
 
             rept = list(map(lambda x: self.get_repetitions_list(x), values_layer))
-            print(self.repetitions_list)
             self.insert_new_row(square_name_layer)
             self.cmap_array[-1] = np.array(list(
                 map(lambda x, con: self.transparent_color if con == '~' else x, self.cmap_array[-1],
@@ -231,7 +233,7 @@ class PieChart:
         return sorted_dict
 
     def create_pie_chart(self):
-        while self.input_array.shape[0] > self.column_idx and self.column_idx < self.layer:
+        while self.input_array.shape[1] > self.column_idx and self.column_idx < self.layer:
             square_name_layer = []
             values_layer = []
             for square_idx, square_name in enumerate(self.square_names[-1]):
@@ -262,6 +264,7 @@ class PieChart:
             self.square_names.append(square_name_layer)
             self.values_array.append(values_layer)
 
+            rept = list(map(lambda x: self.get_repetitions_list(x), values_layer))
             self.insert_new_row(square_name_layer)
             self.cmap_array[-1] = np.array(list(
                 map(lambda x, con: self.transparent_color if con == '~' else x, self.cmap_array[-1],
@@ -373,11 +376,12 @@ class OpeningTree(PieChart):
         # Создаем доску и применяем ходы
         board = chess.Board()
         for ply in self.popular_opening:
-            board.push_san(ply)
+            if ply != '~':
+                board.push_san(ply)
 
         fig, ax = plt.subplots()
         size = 0.25
-        delta = 0.22
+        delta = 0.225
 
         for row in range(5):
             wedges, texts = ax.pie(self.values_array[row], radius=1 + row * delta, colors=self.cmap_array[row],
@@ -388,7 +392,10 @@ class OpeningTree(PieChart):
                 y = np.sin(np.deg2rad(ang))
                 x = np.cos(np.deg2rad(ang))
                 connectionstyle = 'angle,angleA=0,angleB={}'.format(ang)
-                ax.annotate(self.square_names[row][i][2:4], xy=(x, y), xytext=(x * (1 + row * delta - 0.17), y * (1 + row * delta - 0.17)),
+                #ax.annotate(self.square_names[row][i][2:4], xy=(x, y), xytext=(x * (1 + row * delta - 0.17), y * (1 + row * delta - 0.17)),
+                            #horizontalalignment='center', verticalalignment='center')
+                ax.annotate(self.square_names[row][i], xy=(x, y),
+                            xytext=(x * (1 + row * delta - 0.17), y * (1 + row * delta - 0.17)),
                             horizontalalignment='center', verticalalignment='center')
 
         # Рисуем шахматную доску и размещаем в центре диаграммы
@@ -406,13 +413,14 @@ class OpeningTree(PieChart):
             color='white',
         )
         ax.set(aspect='equal')
-        plt.savefig(f'./user_data/final_images/{self.user_name}/PieChart_for_{self.turn}.png', bbox_inches='tight', facecolor=self.background)
+        plt.savefig(PROJECT_PATH+f'/user_data/final_images/{self.user_name}/PieChart_for_{self.turn}.png', bbox_inches='tight', facecolor=self.background)
 
 
 class HeatBoard:
-    def __init__(self, username: str, squares: pd.Series) -> None:
+    def __init__(self, username: str, squares: pd.Series, description: str = 'all') -> None:
         self.username = username
         self.squares = squares
+        self.description = description
         self.file_names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
         self.rank_names = list(range(8, 0, -1))
         self.heat_map_array = np.zeros([8, 8], dtype=int)
@@ -472,7 +480,7 @@ class HeatBoard:
                          linespacing=0.15,
                          rotation=45)
 
-        plt.savefig(f'./user_data/final_images/{self.username}/Heatmap.png', bbox_inches='tight', pad_inches=0.0)
+        plt.savefig(PROJECT_PATH+f'/user_data/final_images/{self.username}/Heatmap_{self.description}.png', bbox_inches='tight', pad_inches=0.0)
         plt.close()
 
 
@@ -515,21 +523,21 @@ class MarkedRaincloud:
                      + geom_boxplot(width=0.25, outlier_shape='', alpha=0.6)
                      + geom_violin(position=position_nudge(x=0), alpha=0.2, adjust=0.5)
                      + geom_segment(
-                    aes(x=1 + self.delta_tick, y=self.av_player_B, xend=1 - self.delta_tick, yend=self.av_player_B),
+                    aes(x=1+self.delta_tick, y=self.av_player_B, xend=1-self.delta_tick, yend=self.av_player_B),
                     color=next(self.iter_color), linetype='solid', size=2)
                      + annotate('text', x=1.3,
                                 y=self.av_player_B + 1 if self.av_player_B > 15 else self.av_player_B - 1, label='You',
                                 size=12,
                                 color='#2A2F4F', fontstyle='italic')
                      + geom_segment(
-                    aes(x=2 + self.delta_tick, y=self.av_player_N, xend=2 - self.delta_tick, yend=self.av_player_N),
+                    aes(x=2+self.delta_tick, y=self.av_player_N, xend=2-self.delta_tick, yend=self.av_player_N),
                     color=next(self.iter_color), linetype='solid', size=2)
                      + annotate('text', x=2.3,
                                 y=self.av_player_N + 1 if self.av_player_N > 15 else self.av_player_N - 1, label='You',
                                 size=12,
                                 color='#2A2F4F', fontstyle='italic')
                      + geom_segment(
-                    aes(x=3 + self.delta_tick, y=self.av_player_R_Q, xend=3 - self.delta_tick, yend=self.av_player_R_Q),
+                    aes(x=3+self.delta_tick, y=self.av_player_R_Q, xend=3-self.delta_tick, yend=self.av_player_R_Q),
                     color=next(self.iter_color), linetype='solid', size=2)
                      + annotate('text', x=3.3,
                                 y=self.av_player_R_Q + 1 if self.av_player_R_Q > 15 else self.av_player_R_Q - 1,
@@ -546,7 +554,7 @@ class MarkedRaincloud:
                      + theme_classic()
                      + theme(legend_position='bottom'))
 
-        raincloud.save(f'./user_data/final_images/{self.username}/MarkedRaincloud_in_{self.game_phase}.png')
+        raincloud.save(PROJECT_PATH+f'/user_data/final_images/{self.username}/MarkedRaincloud_in_{self.game_phase}.png')
 
 
 class VersusViolin:
@@ -632,7 +640,7 @@ class VersusViolin:
                   + theme(figure_size=(12, 4))
                   )
 
-        violin.save(f'./user_data/final_images/{self.username}/VersusViolin.png')
+        violin.save(PROJECT_PATH+f'/user_data/final_images/{self.username}/VersusViolin.png')
 
 
 class AchievementsReport:
@@ -662,7 +670,7 @@ class AchievementsReport:
         self.draw_report()
 
     def create_legend(self):
-        if self.language == 'En_en':
+        if self.language == 'EN_en':
             self.title_text_1 = 'Average predicted rating when you:'
             self.title_text_2 = 'Your achievements:'
             self.title_dict = {
@@ -689,7 +697,7 @@ class AchievementsReport:
                                 'Too many enemy pieces are piling \nup near your king.'],
                 'endgames': ['You play endgames quite often.', 'You checkmate before the endgame']
             }
-        elif self.language == 'Ru_ru':
+        elif self.language == 'RU_ru':
             self.title_text_1 = 'Средний предсказанный рейтинг, когда ты:'
             self.title_text_2 = 'Твои достижения:'
             self.title_dict = {
@@ -718,7 +726,7 @@ class AchievementsReport:
             }
 
     def draw_element(self, ax, index, category, pos):
-        img = mpimg.imread('./icons/AchievementsReport/' + self.path_dict[category][index])
+        img = mpimg.imread(PROJECT_PATH+'/icons/AchievementsReport/' + self.path_dict[category][index])
         ax.imshow(img, extent=pos['img_extent'])
         plt.text(pos['title_x'], pos['title_y'], self.title_dict[category][index], horizontalalignment='left',
                  fontsize=8, color='#CAF0F8', style='italic')
@@ -780,7 +788,7 @@ class AchievementsReport:
             index = next(self.achi_iterator)
             self.draw_element(ax, index, category, pos)
 
-        plt.savefig(f'./user_data/final_images/{self.username}/AchievementsReport.png', bbox_inches='tight',
+        plt.savefig(PROJECT_PATH+f'/user_data/final_images/{self.username}/AchievementsReport.png', bbox_inches='tight',
                     pad_inches=0.0)
 
 

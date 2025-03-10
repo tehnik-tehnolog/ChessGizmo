@@ -2,6 +2,7 @@ import pandas as pd
 import chess
 import chess.pgn
 from stockfish import Stockfish
+from config import PROJECT_PATH
 
 
 class EvalInfo:
@@ -83,7 +84,7 @@ class ModBoard:
         self.delta_CP_by_cauchy = 0
 
         self.stockfish = Stockfish(
-            path=r'.\stockfish_with_avx2\stockfish\stockfish-windows-x86-64-avx2.exe')
+            path=PROJECT_PATH+r'\stockfish_with_avx2\stockfish\stockfish-windows-x86-64-avx2.exe')
         """Cauchy scale parameters."""
         self.gamma_high = 0.3183
         self.gamma_width = 100

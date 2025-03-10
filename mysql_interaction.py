@@ -24,8 +24,8 @@ def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], Non
     except IndexError:
         print('База данных отсутствует')
         return None
-    finally:
-        connection.close()
+  #  finally:
+  #      connection.close()
 
 
 class PopulateDB:
@@ -65,8 +65,8 @@ class PopulateDB:
             print(f"База данных '{self.db_name}' успешно создана или уже существует.")
         except exc.SQLAlchemyError as e:
             print(f'Ошибка при создании базы данных: {e}')
-        finally:
-            connection.close()
+ #       finally:
+  #          connection.close()
 
     def drop_database(self):
         try:
@@ -75,8 +75,8 @@ class PopulateDB:
             print(f"База данных '{self.db_name}' успешно удалена.")
         except exc.SQLAlchemyError as e:
             print(f'Ошибка при базы данных: {e}')
-        finally:
-            connection.close()
+  #      finally:
+   #         connection.close()
 
     def save_df(self, chess_df_users: DataFrame, chess_games_info: DataFrame, games_by_moves: DataFrame):
         """
