@@ -1,0 +1,6 @@
+/venv/
+/.idea/
+/user_data/
+/stockfish_with_avx2/
+/config.py
+/error_log.txt

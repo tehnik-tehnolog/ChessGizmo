@@ -83,14 +83,17 @@ class PopulateDB:
         Сохраняет DataFrame в таблицы MySQL.
         """
         try:
-            # Сохранение данных в таблицы
-            chess_df_users.to_sql('chess_df_users', con=self.engine, if_exists='replace', index=False,
-                                  dtype=chess_df_users_dtypes)
-            games_by_moves.to_sql('games_by_moves', con=self.engine, if_exists='replace', index=False,
-                                  dtype=games_by_moves_dtypes)
-            chess_games_info.to_sql('chess_games_info', con=self.engine, if_exists='replace', index=False,
-                                    dtype=chess_games_info_dtypes)
-            print("Данные успешно сохранены в таблицы MySQL.")
+            with self.engine.begin() as connection:
+                # Сохранение данных в таблицы
+                chess_df_users.to_sql('chess_df_users', con=self.engine, if_exists='replace', index=False,
+                                      dtype=chess_df_users_dtypes)
+                chess_games_info.to_sql('chess_games_info', con=self.engine, if_exists='replace', index=False,
+                                        dtype=chess_games_info_dtypes)
+                games_by_moves.to_sql('games_by_moves', con=connection, if_exists='replace',
+                                      index=False, dtype=games_by_moves_dtypes,
+                                      chunksize=100000, method='multi')
+
+                print("Данные успешно сохранены в таблицы MySQL.")
         except exc.SQLAlchemyError as e:
             print(f'Ошибка при сохранении данных: {e}')
 

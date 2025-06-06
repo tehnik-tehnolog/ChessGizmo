@@ -29,8 +29,8 @@ chess_games_info_dtypes = {
 games_by_moves_dtypes = {
     'id_game': VARCHAR(100),
     'move_number': VARCHAR(6),
-    'white_move': VARCHAR(6),
-    'black_move': VARCHAR(6),
+    'white_move': VARCHAR(8),
+    'black_move': VARCHAR(8),
     'white_move_index': TINYINT,
     'black_move_index': TINYINT,
     'analysis': Float,
@@ -46,7 +46,7 @@ games_by_moves_dtypes = {
     'king_openness': TINYINT,
     'knight_activity_coeff': TINYINT,
     'bishop_activity_coeff': TINYINT,
-    'rook_and_queen_activity_coeff': TINYINT
+    'rook_and_queen_activity_coeff': TINYINT,
 }
 
 

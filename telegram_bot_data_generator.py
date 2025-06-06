@@ -12,7 +12,17 @@ from config import HOST, USER, PASSWORD, PROJECT_PATH
 import pandas as pd
 
 
+language = 'RU_ru'
+messages = 'messages'
+room = 'Chesscom'
+nickname = 'wsenorm'
+blitz_num = 5
+rapid_num = 0
+game_type = 'blitz'
+blitz_rating = 500
+rapid_rating = 1000
 
+main_rating = blitz_rating if game_type == 'blitz' else rapid_rating
 
 
 
