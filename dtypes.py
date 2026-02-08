@@ -1,6 +1,6 @@
 from sqlalchemy.dialects.postgresql import TEXT, BIGINT, SMALLINT, BOOLEAN, REAL
 
-# Data types for the users_df table
+# Data types for the users table
 users_dtypes = {
     'username': TEXT,
     'num_games': BIGINT
@@ -67,4 +67,3 @@ games_by_moves_dtypes = {
     'rook_and_queen_activity_coeff': SMALLINT,
     'main_color': BOOLEAN
 }
-

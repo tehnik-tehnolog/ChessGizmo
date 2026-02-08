@@ -1,6 +1,5 @@
-from collections import deque
+from collections import Counter, deque
 import numpy as np
-from collections import Counter
 import pandas as pd
 import seaborn as sns
 import matplotlib
@@ -10,180 +9,131 @@ from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.image as mpimg
-from plotnine import *
-# from functools import reduce
-# from chess import SQUARE_NAMES
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from plotnine import *
+from plotnine.exceptions import PlotnineWarning
+import warnings
+warnings.filterwarnings('ignore', category=PlotnineWarning)
 import chess
 import chess.svg
 import cairosvg
+import boto3
 from io import BytesIO
-import matplotlib.image as mpimg
-from config import PROJECT_PATH
+import aioboto3
+from botocore.config import Config
+import json
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
+class ChessStorage:
+    def __init__(self):
+        self.endpoint = os.getenv('B2_ENDPOINT')
+        self.key_id = os.getenv('B2_KEY_ID')
+        self.app_key = os.getenv('B2_APPLICATION_KEY')
+        self.bucket_name = os.getenv('B2_BUCKET_NAME')
+        self.region = os.getenv('REGION')
 
-class PieChartXXX:
-    def __init__(self, input_array, threshold, layer) -> None:
-        self.input_array = input_array
-        self.threshold = threshold
-        self.layer = layer
-        self.other_value = 0
-        self.other_values = deque()
-        self.column_idx = 0
-        self.colors = ['#67B99A', '#F9844A', '#8187DC', '#FF7096', '#669BBC', '#BC4749',
-                       '#80ED99', '#FFD133', '#CE4257', '#48cae4', '#A7C957', '#E6BEAE',
-                       '#2196F3', '#5C677D', '#AD2831', '#606C38', '#FF5C8A']
-        self.transparent_color = np.array([1.0, 1.0, 1.0, 0.0])
+        # Обычный клиент для синхронных функций
+        self.s3_sync = boto3.client(
+            service_name='s3',
+            endpoint_url=self.endpoint,
+            aws_access_key_id=self.key_id,
+            aws_secret_access_key=self.app_key
+        )
 
-        self.square_names = [[None], ]
-        self.values_array = []
-        self.repetitions_list = [0]
-        self.plys_sequence_array = []
-        self.cmap_array = []
+        # Конфигурация для корректной подписи S3v4
+        self.session = aioboto3.Session()
 
-        self.condition_list = []
+    def upload_buffer(self, buffer, filename):
+        buffer.seek(0)
+        self.s3_sync.upload_fileobj(buffer, self.bucket_name, filename)
 
-        self.func()
+    def upload_json(self, data_dict, filename):
+        # 1. Сериализуем словарь в JSON-строку
+        json_data = json.dumps(data_dict, indent=4, ensure_ascii=False)
 
-    def quicksort_dict(self, dict_):
-        if len(dict_) <= 1:
-            return dict_
-        pivot = list(dict_.items())[len(dict_) // 2][1]
-        left = {}
-        middle = {}
-        right = {}
-        for key, value in dict_.items():
-            if value > self.threshold:
-                if value > pivot:
-                    left[key] = value
-                elif value == pivot:
-                    middle[key] = value
-                elif value < pivot:
-                    right[key] = value
-            elif value <= self.threshold:
-                self.other_value += value
+        buffer = BytesIO(json_data.encode('utf-8'))
+        buffer.seek(0)
 
-        sorted_left = self.quicksort_dict(left)
-        sorted_right = self.quicksort_dict(right)
-        sorted_dict = {**sorted_left, **middle, **sorted_right}
+        # Используем put_object, так как это проще для передачи ContentType
+        self.s3_sync.put_object(
+            Bucket=self.bucket_name,
+            Key=filename,
+            Body=buffer,
+            ContentType='application/json'
+        )
 
-        return sorted_dict
+    async def download_to_buffer(self, filename, buffer):
+        """Скачивание файла напрямую в BytesIO буфер"""
+        async with self.session.client(
+                service_name='s3',
+                endpoint_url=self.endpoint,
+                aws_access_key_id=self.key_id,
+                aws_secret_access_key=self.app_key,
+                region_name=self.region
+        ) as s3:
+            response = await s3.get_object(Bucket=self.bucket_name, Key=filename)
+            async with response['Body'] as stream:
+                buffer.write(await stream.read())
+            buffer.seek(0)
 
-    def func(self):
-        while self.input_array.shape[0] > self.column_idx and self.column_idx < self.layer:
-            square_name_layer = []
-            values_layer = []
-            for square_idx, square_name in enumerate(self.square_names[-1]):
-                if square_name != '~':
-                    if self.column_idx == 0:
-                        ply_fetch = self.input_array[:, 0]
-                        self.square_names.pop()
-                    else:
-                        ply_fetch = self.get_fetch(self.input_array, square_idx)
-                    ply_counter = Counter(ply_fetch)
-                    ply_counter = self.quicksort_dict(ply_counter)
+    async def download_json(self, filename):
+        # Скачивает JSON файл из B2 и возвращает его как словарь (dict).
+        async with self.session.client(
+                service_name='s3',
+                endpoint_url=self.endpoint,
+                aws_access_key_id=self.key_id,
+                aws_secret_access_key=self.app_key,
+                region_name=self.region
+        ) as s3:
+            response = await s3.get_object(Bucket=self.bucket_name, Key=filename)
+            async with response['Body'] as stream:
+                content = await stream.read()
 
-                    square_name_layer.extend(list(ply_counter.keys()))
-                    values_layer.extend(list(ply_counter.values()))
+            style_dict = json.loads(content.decode('utf-8'))
+            return style_dict
 
-                    if self.other_value:
-                        self.other_values.append(self.other_value)
-                        square_name_layer.append('~')
-                        values_layer.append(self.other_value)
-                        self.other_value = 0
 
-                elif square_name == '~':  # and self.other_values:
-                    square_name_layer.append('~')
-                    values_layer.append(self.other_values[0])
-                    self.other_values.append(self.other_values[0])
-                    self.other_values.popleft()
+    async def delete_user_folder(self, username: str):
+        """Асинхронное удаление всех файлов пользователя"""
+        async with self.session.client(
+                service_name='s3',
+                endpoint_url=self.endpoint,
+                aws_access_key_id=self.key_id,
+                aws_secret_access_key=self.app_key,
+                region_name=self.region
+        ) as s3:
+            # Листинг объектов
+            paginator = s3.get_paginator('list_objects_v2')
+            async for result in paginator.paginate(Bucket=self.bucket_name, Prefix=f"{username}/"):
+                if 'Contents' in result:
+                    delete_keys = [{'Key': obj['Key']} for obj in result['Contents']]
+                    await s3.delete_objects(
+                        Bucket=self.bucket_name,
+                        Delete={'Objects': delete_keys}
+                    )
+                    print(f'The user folder {username} was successfully deleted')
+                else:
+                    print(f'The user folder {username} was not found')
 
-            self.square_names.append(square_name_layer)
-            self.values_array.append(values_layer)
-
-            rept = list(map(lambda x: self.get_repetitions_list(x), values_layer))
-            self.insert_new_row(square_name_layer)
-            self.cmap_array[-1] = np.array(list(
-                map(lambda x, con: self.transparent_color if con == '~' else x, self.cmap_array[-1],
-                    square_name_layer)))
-            self.repetitions_list = [0]
-
-            self.pred_square_names = deque(square_name_layer)
-            self.pred_values = deque(values_layer)
-
-            self.column_idx += 1
-
-    def add_to_condition_list(self, value, idx):
-        if self.condition_list:
-            self.condition_list[idx - 1] = value
-            self.condition_list = self.condition_list[:idx]
-        else:
-            self.condition_list.append(value)
-
-    def get_fetch(self, array, square_idx):
-        mask = None
-        condition_list = self.plys_sequence_array[:, square_idx]
-        for idx, condition in enumerate(condition_list):
-            if idx == 0:
-                mask = array[:, idx] == condition
-            else:
-                mask &= array[:, idx] == condition
-        return array[mask][:, len(condition_list)]
-
-    def insert_new_row(self, square_layer):
-        if self.column_idx:
-            col = []
-            pred_col = []
-            pred_array = None
-            for i, n in enumerate(self.repetitions_list):
-                for _ in range(n):
-                    col.append(i + 1)
-                    pred_col.append(i)
-            pred_array = np.insert(self.plys_sequence_array, col, self.plys_sequence_array[:, pred_col], axis=1)
-            #  self.pred_cmap = np.insert(self.cmap_array, col, self.cmap_array[:, pred_col], axis=1)
-            # self.pred_cmap = self.copy_colors(self.pred_cmap, col, pred_col)
-            self.pred_cmap = np.insert(self.pred_cmap, col, self.pred_cmap[pred_col, :], axis=0)
-            self.plys_sequence_array = np.vstack([pred_array, square_layer])
-            # self.cmap_array = np.vstack([pred_cmap, self.cmap_array[-1]])
-            # self.cmap_array = np.concatenate((self.cmap_array, pred_cmap), axis=0)
-            self.cmap_array.append(self.pred_cmap)
-        else:
-            self.plys_sequence_array = np.array([square_layer])
-            cmap = ListedColormap(self.colors)
-            custom_colors = cmap(list(range(len(square_layer))))
-            #custom_colors = cmap(list(range(len(square_layer) - 1)))
-            self.pred_cmap = custom_colors
-            self.cmap_array = [custom_colors]
-
-    def reduce_row_values(self, pred_row, value, skip_values=0):
-        if pred_row[0]:
-            pred_row[0] -= value
-            # self.new_row_queue_array.insert()
-            return skip_values
-        else:
-            pred_row.popleft()
-            skip_values += 1
-            return self.reduce_row_values(pred_row, value, skip_values)
-
-    def get_repetitions_list(self, value):
-        if self.column_idx:
-            self.pred_values[0] -= value
-            if self.pred_values[0]:
-                self.repetitions_list[-1] += 1
-            else:
-                self.pred_square_names.popleft()
-                self.pred_values.popleft()
-                self.repetitions_list.append(0)
-
-    def copy_colors(self, array: np.ndarray, col, pred_col):
-        result = np.copy(array)
-
-        for c, p in zip(col, pred_col):
-            result = np.insert(result, c, result[:, p], axis=1)
-
-        return result
-
+    async def get_url(self, filename, expires=3600):
+        """Генерирует временную ссылку (асинхронно)"""
+        async with self.session.client(
+                service_name='s3',
+                endpoint_url=self.endpoint,
+                aws_access_key_id=self.key_id,
+                aws_secret_access_key=self.app_key,
+                region_name=self.region,
+                config=Config(signature_version='s3v4')
+        ) as s3:
+            return await s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': self.bucket_name, 'Key': filename},
+                ExpiresIn=expires
+            )
 
 class PieChart:
     def __init__(self, input_array, threshold, layer) -> None:
@@ -334,26 +284,27 @@ class PieChart:
 
     def adjust_colors(self):
         """
-        Корректирует цвета для каждого четного слоя, делая их чуть темнее.
+        Adjusts the colors for each even layer, making them slightly darker.
         """
         for i in range(len(self.cmap_array)):
-            if i % 2 == 1:  # Четные слои (индексы 1, 3, 5 и т.д.)
-                self.cmap_array[i] = self.cmap_array[i] * 0.8  # Уменьшаем яркость на 20%
-                self.cmap_array[i][:, 3] = 1.0  # Сохраняем альфа-канал (прозрачность)
+            if i % 2 == 1:
+                self.cmap_array[i] = self.cmap_array[i] * 0.8  # Reduce brightness by 20%
+                self.cmap_array[i][:, 3] = 1.0  # Preserve alpha channel (transparency)
 
 
 class OpeningTree(PieChart):
-    def __init__(self, input_array:np.array, threshold:int, layer:int, user_name:str, turn:str):
+    def __init__(self, input_array:np.array, threshold:int, layer:int, user_name:str, turn:str, storage:ChessStorage):
         super().__init__(input_array, threshold, layer)
         self.user_name = user_name
         self.turn = turn
+        self.storage = storage
         self.popular_opening = [row[0] for row in self.square_names if len(row) > 0]
         self.background = '#111111'
         self.visualize()
 
     def draw_chess_board(self, board:chess.Board):
         style = {
-            'size': 200,  # Размер меньше для встраивания в диаграмму
+            'size': 200,
             'coordinates': False,
             'colors': {
                 'square light': '#f0d9b5',
@@ -371,9 +322,8 @@ class OpeningTree(PieChart):
 
     def visualize(self):
         """
-        Визуализирует диаграмму и шахматную доску.
+        Visualizes the diagram and the chessboard.
         """
-        # Создаем доску и применяем ходы
         board = chess.Board()
         for ply in self.popular_opening:
             if ply != '~':
@@ -398,7 +348,7 @@ class OpeningTree(PieChart):
                             xytext=(x * (1 + row * delta - 0.17), y * (1 + row * delta - 0.17)),
                             horizontalalignment='center', verticalalignment='center')
 
-        # Рисуем шахматную доску и размещаем в центре диаграммы
+        # Draw the chessboard and place it in the center of the diagram
         chess_board_image = self.draw_chess_board(board)
         imagebox = OffsetImage(chess_board_image, zoom=0.64)
         ab = AnnotationBbox(imagebox, (0.5, 0.5), frameon=False, boxcoords='axes fraction', pad=0.5)
@@ -413,13 +363,18 @@ class OpeningTree(PieChart):
             color='white',
         )
         ax.set(aspect='equal')
-        plt.savefig(PROJECT_PATH+f'/user_data/final_images/{self.user_name}/PieChart_for_{self.turn}.png', bbox_inches='tight', facecolor=self.background)
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', bbox_inches='tight', facecolor=self.background)
+        filename = f'{self.user_name}/PieChart_for_{self.turn}.png'
+        self.storage.upload_buffer(buffer, filename)
+        plt.close()
 
 
 class HeatBoard:
-    def __init__(self, username: str, squares: pd.Series, description: str = 'all') -> None:
+    def __init__(self, username: str, squares: pd.Series, storage=ChessStorage, description: str = 'all') -> None:
         self.username = username
         self.squares = squares
+        self.storage = storage
         self.description = description
         self.file_names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
         self.rank_names = list(range(8, 0, -1))
@@ -480,13 +435,17 @@ class HeatBoard:
                          linespacing=0.15,
                          rotation=45)
 
-        plt.savefig(PROJECT_PATH+f'/user_data/final_images/{self.username}/Heatmap_{self.description}.png', bbox_inches='tight', pad_inches=0.0)
+
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', bbox_inches='tight', pad_inches=0.0)
+        filename = f'{self.username}/Heatmap_{self.description}.png'
+        self.storage.upload_buffer(buffer, filename)
         plt.close()
 
 
 class MarkedRaincloud:
     def __init__(self, pieces_param_sample: pd.DataFrame, av_player_N, av_player_B,
-                 av_player_R_Q, main_rating: int, username: str, game_phase: str, JACE_COLOR=None) -> None:
+                 av_player_R_Q, main_rating: int, username: str, game_phase: str, storage:ChessStorage, JACE_COLOR=None) -> None:
         self.pieces_param_sample = pieces_param_sample
         self.av_player_N = av_player_N
         self.av_player_B = av_player_B
@@ -494,6 +453,7 @@ class MarkedRaincloud:
         self.main_rating = main_rating
         self.username = username
         self.game_phase = game_phase
+        self.storage = storage
         if JACE_COLOR is None:
             self.JACE_COLOR = ['#CD5C08', '#295F98', '#007A87', '#8CE071', '#7B0051',
                                '#00D1C1', '#FFAA91', '#B4A76C', '#9CA299', '#565A5C',
@@ -554,21 +514,40 @@ class MarkedRaincloud:
                      + theme_classic()
                      + theme(legend_position='bottom'))
 
-        raincloud.save(PROJECT_PATH+f'/user_data/final_images/{self.username}/MarkedRaincloud_in_{self.game_phase}.png')
+        buffer = BytesIO()
+        raincloud.save(buffer, format='png', verbose=False)
+        filename = f'{self.username}/MarkedRaincloud_in_{self.game_phase}.png'
+        self.storage.upload_buffer(buffer, filename)
+
+        plt.clf()
+        plt.close()
 
 
 class VersusViolin:
-    def __init__(self, username: str, sample: pd.DataFrame) -> None:
+    def __init__(self, username: str, sample: pd.DataFrame, storage:ChessStorage, normalize=True) -> None:
         self.username = username
         self.sample = sample
+        self.storage = storage
         self.scheme = pd.DataFrame(columns=['object for comparison', 'value', 'parameter for comparison', 'class'])
         self.JACE_COLOR = ["#E69F00", "#56B4E9", "#C62E2E", "#257180"]
         self.order = ['bishop', 'knight', 'inc', 'dec']
         self.class_order = ['♞ VS ♝ in opening', '♞ VS ♝ in middle-/endgame', '⚔ VS ☗ in opening',
                             '⚔ VS ☗ in middle-/endgame']
 
+        if normalize:
+            self.normalize_attack_defence_columns()
         self.populate_scheme()
         self.draw_violin()
+
+    def normalize_attack_defence_columns(self):
+        inc_dec_subset = self.sample.loc[:, ['av_opening_mobility_inc', 'av_opening_mobility_dec',
+                                             'av_mittelspiel_endgame_mobility_inc', 'av_mittelspiel_endgame_mobility_dec']]
+        knight_bishop_subset = self.sample.loc[:, ['av_opening_knight_activ_coeff', 'av_opening_bishop_activ_coeff',
+                                                   'av_mittelspiel_endgame_knight_activ_coeff',
+                                                   'av_mittelspiel_endgame_bishop_activ_coeff']]
+        inc_dec_subset_normalize = (inc_dec_subset - inc_dec_subset.min().min()) / (inc_dec_subset.max().max() - inc_dec_subset.min().min())
+        inc_dec_subset_normalize = inc_dec_subset_normalize * (knight_bishop_subset.max().max() - knight_bishop_subset.min().min()) + knight_bishop_subset.min().min()
+        self.sample.loc[:, inc_dec_subset.columns] = inc_dec_subset_normalize
 
     def populate_scheme(self):
         for col in self.sample.columns:
@@ -620,7 +599,7 @@ class VersusViolin:
         # Setting categorical data with the desired order for 'object for comparison' and 'class'
         self.scheme['object for comparison'] = pd.Categorical(self.scheme['object for comparison'],
                                                               categories=self.order,
-                                                              ordered=True)  # xzzx
+                                                              ordered=True)
         self.scheme['class'] = pd.Categorical(self.scheme['class'], categories=self.class_order, ordered=True)
 
     def draw_violin(self):
@@ -640,15 +619,20 @@ class VersusViolin:
                   + theme(figure_size=(12, 4))
                   )
 
-        violin.save(PROJECT_PATH+f'/user_data/final_images/{self.username}/VersusViolin.png')
+        buffer = BytesIO()
+        violin.save(buffer, format='png', verbose=False)
+        filename = f"{self.username}/VersusViolin.png"
+        self.storage.upload_buffer(buffer, filename)
+        buffer.close()
 
 
 class AchievementsReport:
-    def __init__(self, username, win_rating, draw_rating, lose_rating, achicode: list, language='En_en') -> None:
+    def __init__(self, username, win_rating, draw_rating, lose_rating, achicode: list, storage:ChessStorage, language='En_en') -> None:
         self.username = username
         self.win_rating = win_rating
         self.draw_rating = draw_rating
         self.lose_rating = lose_rating
+        self.storage = storage
         self.language = language
         self.achi_iterator = iter(achicode)
 
@@ -726,7 +710,7 @@ class AchievementsReport:
             }
 
     def draw_element(self, ax, index, category, pos):
-        img = mpimg.imread(PROJECT_PATH+'/icons/AchievementsReport/' + self.path_dict[category][index])
+        img = mpimg.imread('./icons/AchievementsReport/' + self.path_dict[category][index])
         ax.imshow(img, extent=pos['img_extent'])
         plt.text(pos['title_x'], pos['title_y'], self.title_dict[category][index], horizontalalignment='left',
                  fontsize=8, color='#CAF0F8', style='italic')
@@ -735,41 +719,52 @@ class AchievementsReport:
 
     def draw_report(self):
         fig, ax = plt.subplots(figsize=(8, 5), dpi=300)
+        fig.patch.set_facecolor('#2E3440')  # Background color of the entire plot
+        ax.set_facecolor('#2E3440')  # Background color of the axes
 
-        # Изменение цвета фона
-        fig.patch.set_facecolor('#2E3440')  # Цвет фона всего графика
-        ax.set_facecolor('#2E3440')  # Цвет фона осей
-
-        # Настройка осей
+        # Axes settings
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis('off')
 
-        # Добавление текста заголовка
+        # Add title text
         plt.text(0.03, 0.9, self.title_text_1, horizontalalignment='left', fontsize=12, color='white')
         plt.text(0.03, 0.6, self.title_text_2, horizontalalignment='left', fontsize=12, color='white')
 
-        # Создание прямоугольников со скругленными краями
-        rect1 = patches.FancyBboxPatch((0.03, 0.72), 0.23, 0.12, boxstyle="round,pad=0.01", edgecolor='none',
-                                       facecolor='#386641')
-        rect2 = patches.FancyBboxPatch((0.285, 0.72), 0.23, 0.12, boxstyle="round,pad=0.01", edgecolor='none',
-                                       facecolor='gray')
-        rect3 = patches.FancyBboxPatch((0.54, 0.72), 0.23, 0.12, boxstyle="round,pad=0.01", edgecolor='none',
-                                       facecolor='#8D0801')
+        # Create a list of active ratings
+        ratings = []
+        if self.win_rating is not None:
+            ratings.append(('Win', self.win_rating, '#386641'))
+        if self.draw_rating is not None:
+            ratings.append(('Draw', self.draw_rating, 'gray'))
+        if self.lose_rating is not None:
+            ratings.append(('Lose', self.lose_rating, '#8D0801'))
 
-        ax.add_patch(rect1)
-        ax.add_patch(rect2)
-        ax.add_patch(rect3)
+        n = len(ratings)
+        total_width = 0.74  # Total width of the area (0.77 - 0.03)
+        gap = 0.025  # Fixed gap between elements
 
-        # Добавление текста внутри прямоугольников
-        plt.text(0.145, 0.77, f'Win\n{self.win_rating}', horizontalalignment='center', verticalalignment='center',
-                 fontsize=12, weight='bold', color='white')  # , fontfamily='serif'
-        plt.text(0.4, 0.77, f'Draw\n{self.draw_rating}', horizontalalignment='center', verticalalignment='center',
-                 fontsize=12, weight='bold', color='white')
-        plt.text(0.655, 0.77, f'Lose\n{self.lose_rating}', horizontalalignment='center', verticalalignment='center',
-                 fontsize=12, weight='bold', color='white')
+        rect_width = (total_width - gap * (n - 1)) / n
 
-        # Позиции для изображений и текста
+        # Starting position (center if only one element)
+        start_x = 0.03 + (total_width - (rect_width * n + gap * (n - 1))) / 2
+
+        # Draw rectangles and text
+        for i, (label, rating_value, color) in enumerate(ratings):
+            x_pos = start_x + i * (rect_width + gap)
+            rect = patches.FancyBboxPatch(
+                (x_pos, 0.72), rect_width, 0.12,
+                boxstyle="round,pad=0.01", edgecolor='none', facecolor=color
+            )
+            ax.add_patch(rect)
+            center_x = x_pos + rect_width / 2
+            plt.text(
+                center_x, 0.77, f'{label}\n{rating_value}',
+                horizontalalignment='center', verticalalignment='center',
+                fontsize=12, weight='bold', color='white'
+            )
+
+        # Positions for images and text
         positions = [
             {'img_extent': [0.03, 0.13, 0.45, 0.55], 'title_x': 0.15, 'title_y': 0.51, 'desc_x': 0.15, 'desc_y': 0.47},
             {'img_extent': [0.03, 0.13, 0.3, 0.4], 'title_x': 0.15, 'title_y': 0.36, 'desc_x': 0.15, 'desc_y': 0.285},
@@ -783,14 +778,17 @@ class AchievementsReport:
         categories = ['best_turn', 'best_piece', 'development', 'best_side', 'attack/defence', 'king_safety',
                       'endgames']
 
-        # Добавление изображений и текста по позициям
+        # Add images and text by positions
         for pos, category in zip(positions, categories):
             index = next(self.achi_iterator)
             self.draw_element(ax, index, category, pos)
 
-        plt.savefig(PROJECT_PATH+f'/user_data/final_images/{self.username}/AchievementsReport.png', bbox_inches='tight',
-                    pad_inches=0.0)
 
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png', bbox_inches='tight', pad_inches=0.0)
+        file_name = f'{self.username}/AchievementsReport.png'
+        self.storage.upload_buffer(buffer, file_name)
+        plt.close()
 
 
 

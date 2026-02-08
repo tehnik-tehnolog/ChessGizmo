@@ -5,7 +5,10 @@ import chess.pgn
 import io
 import berserk
 from chess_analyzer import EvalInfo, ModBoard
-from config import LICHESS_TOKEN
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class BaseData:
@@ -227,7 +230,7 @@ class LichessData(BaseData):
         self.username = username
         self.num_games = num_games
 
-        self.token = LICHESS_TOKEN  # config.lichess_token
+        self.token = os.getenv('LICHESS_TOKEN')
         self.games = None
 
         self.main_color_lst = []
@@ -307,28 +310,3 @@ class FromDataBase(BaseData):
         pgn_string = io.StringIO(pgn)
         game = chess.pgn.read_game(pgn_string)
         return game
-
-
-
-
-
-
-
-# a = ChesscomData(username='wsenorm', num_games=1, game_type='rapid')
-# b = ChesscomData(username='wsenorm', num_games=0, game_type='blitz')
-# c = ChesscomData(username='lyonbeast', num_games=2)
-# print(a.moves_df, a.chesscom_df)
-# print(pd.concat([a.chesscom_df, b.chesscom_df], ignore_index=True))
-# print(pd.concat([a.moves_df, b.moves_df, c.moves_df], ignore_index=True))
-# username = "Maks_Klyuev"
-# username = "maksimklyuev"
-
-# player = PlayerDataGenerator(username='maks_klyuev')
-
-# print(player.get_player_info())
-# player_games = ChesscomData(username='maks_klyuev', num_games=1, game_type='rapid')
-# player_chesscom_df = player_games.chesscom_df
-# player_moves_df = player_games.moves_df
-
-# print(player_chesscom_df)
-# print(player_moves_df)

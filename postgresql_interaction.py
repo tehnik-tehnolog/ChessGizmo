@@ -1,9 +1,11 @@
 from typing import Union, Literal
 from pandas import DataFrame
 from sqlalchemy import create_engine, text, exc
-from config import HOST, USER, PASSWORD
+import os
+from dotenv import load_dotenv
 from dtypes import users_dtypes, games_info_dtypes, games_by_moves_dtypes
 
+load_dotenv()
 
 
 def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], None]:
@@ -32,13 +34,19 @@ def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], Non
 class PopulateDB:
     def __init__(self, schema_name: str):
         self.schema_name = schema_name
-        self.db_url = f'postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}/postgres'
+        user = os.getenv('USER')
+        password = os.getenv('PASSWORD')
+        host = os.getenv('HOST')
+        self.db_url = f'postgresql+psycopg2://{user}:{password}@{host}/postgres'
         self.engine = create_engine(self.db_url, echo=False)
 
     @staticmethod
     def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], None]:
         try:
-            temp_db_url = f'postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}/postgres'
+            user = os.getenv('USER')
+            password = os.getenv('PASSWORD')
+            host = os.getenv('HOST')
+            temp_db_url = f'postgresql+psycopg2://{user}:{password}@{host}/postgres'
             temp_engine = create_engine(temp_db_url, echo=False)
             with temp_engine.connect() as connection:
                 blitz_schema = f'chess_blitz_{username}'
