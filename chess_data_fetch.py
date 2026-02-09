@@ -5,10 +5,8 @@ import chess.pgn
 import io
 import berserk
 from chess_analyzer import EvalInfo, ModBoard
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from stockfish import Stockfish
+from config import GizmoConfig
 
 
 class BaseData:
@@ -60,10 +58,11 @@ class PlayerInfo:
 
 
 class ChesscomData(BaseData):
-    def __init__(self, username, num_games, game_type='blitz'):
+    def __init__(self, username, num_games, stockfish:Stockfish, game_type:str='blitz'):
         super().__init__(username=username, num_games=num_games)
         self.username = username
         self.num_games = num_games
+        self.stockfish = stockfish
         self.moves_df.loc[0] = pd.Series()  # add first empty row
         self.add_new_row = True
 
@@ -117,7 +116,7 @@ class ChesscomData(BaseData):
         pgn_string = io.StringIO(game['pgn'])
         game_pgn = chess.pgn.read_game(pgn_string)
         color_index = self.color_index(main_color)
-        board = ModBoard()
+        board = ModBoard(self.stockfish)
         self.add_new_row = True
         for ply, move in enumerate(list(game_pgn.mainline_moves())):
             side = board.board.turn
@@ -224,13 +223,14 @@ class ChesscomData(BaseData):
 
 
 class LichessData(BaseData):
-    def __init__(self, username, num_games):
+    def __init__(self, username, num_games, config: GizmoConfig = None):
         super().__init__(username=username, num_games=num_games)
 
         self.username = username
         self.num_games = num_games
+        cfg = config or GizmoConfig()
 
-        self.token = os.getenv('LICHESS_TOKEN')
+        self.token = cfg.lichess_token
         self.games = None
 
         self.main_color_lst = []

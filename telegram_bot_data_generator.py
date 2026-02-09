@@ -6,6 +6,7 @@ from postgresql_interaction import PopulateDB
 from graph_visualization import *
 from models import ChessModel
 import pandas as pd
+from stockfish import Stockfish
 
 
 class TGBotDataGenerator:
@@ -31,13 +32,16 @@ class TGBotDataGenerator:
         self.all_db_name = f'chess_{self.game_type}'
         self.player_sql_db = PopulateDB(self.player_db_name)
 
+        self.stockfish = Stockfish(
+            path=r'.\stockfish_with_avx2\stockfish\stockfish-windows-x86-64-avx2.exe')
+
         if self.calculate:
             self.generate_chess_data()
             self.run_scripts()
 
     def generate_chess_data(self):
-        blitz_data = ChesscomData(username=self.nickname, num_games=self.blitz_num, game_type='blitz')
-        rapid_data = ChesscomData(username=self.nickname, num_games=self.rapid_num, game_type='rapid')
+        blitz_data = ChesscomData(username=self.nickname, num_games=self.blitz_num, game_type='blitz', stockfish=self.stockfish)
+        rapid_data = ChesscomData(username=self.nickname, num_games=self.rapid_num, game_type='rapid', stockfish=self.stockfish)
         if self.blitz_num and self.rapid_num:
             self.chess_games_info = pd.concat([blitz_data.chesscom_df, rapid_data.chesscom_df], axis=0)
             self.games_by_moves = pd.concat([blitz_data.moves_df, rapid_data.moves_df], axis=0)

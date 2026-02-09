@@ -1,16 +1,14 @@
 from typing import Union, Literal
 from pandas import DataFrame
 from sqlalchemy import create_engine, text, exc
-import os
-from dotenv import load_dotenv
+from config import GizmoConfig
 from dtypes import users_dtypes, games_info_dtypes, games_by_moves_dtypes
 
-load_dotenv()
 
-
-def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], None]:
+def check_database_exists(username: str, config: GizmoConfig = None) -> Union[Literal['blitz', 'rapid'], None]:
     try:
-        temp_db_url = f'postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}/postgres'
+        cfg = config or GizmoConfig()
+        temp_db_url = f'postgresql+psycopg2://{cfg.user}:{cfg.password}@{cfg.host}/postgres'
         temp_engine = create_engine(temp_db_url, echo=False)
         with temp_engine.connect() as connection:
             blitz_schema = f'chess_blitz_{username}'
@@ -32,21 +30,17 @@ def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], Non
 
 
 class PopulateDB:
-    def __init__(self, schema_name: str):
+    def __init__(self, schema_name: str, config: GizmoConfig = None):
         self.schema_name = schema_name
-        user = os.getenv('USER')
-        password = os.getenv('PASSWORD')
-        host = os.getenv('HOST')
-        self.db_url = f'postgresql+psycopg2://{user}:{password}@{host}/postgres'
+        cfg = config or GizmoConfig()
+        self.db_url = f'postgresql+psycopg2://{cfg.user}:{cfg.password}@{cfg.host}/postgres'
         self.engine = create_engine(self.db_url, echo=False)
 
     @staticmethod
-    def check_database_exists(username: str) -> Union[Literal['blitz', 'rapid'], None]:
+    def check_database_exists(username: str, config: GizmoConfig = None) -> Union[Literal['blitz', 'rapid'], None]:
         try:
-            user = os.getenv('USER')
-            password = os.getenv('PASSWORD')
-            host = os.getenv('HOST')
-            temp_db_url = f'postgresql+psycopg2://{user}:{password}@{host}/postgres'
+            cfg = config or GizmoConfig()
+            temp_db_url = f'postgresql+psycopg2://{cfg.user}:{cfg.password}@{cfg.host}/postgres'
             temp_engine = create_engine(temp_db_url, echo=False)
             with temp_engine.connect() as connection:
                 blitz_schema = f'chess_blitz_{username}'

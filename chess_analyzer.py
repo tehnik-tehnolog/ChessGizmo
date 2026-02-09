@@ -64,7 +64,7 @@ class EvalInfo:
 
 
 class ModBoard:
-    def __init__(self):
+    def __init__(self, stockfish:Stockfish):
         # super().__init__(self.moves, self.game_link, self.analyze_a_game)
         # __eval__ = EvalInfo(game_link, analyze_a_game=False)
         # self.moves = __eval__.moves
@@ -82,8 +82,7 @@ class ModBoard:
         self.delta_CP = 0  # change in eval per ply
         self.delta_CP_by_cauchy = 0
 
-        self.stockfish = Stockfish(
-            path=r'.\stockfish_with_avx2\stockfish\stockfish-windows-x86-64-avx2.exe')
+        self.stockfish = stockfish
         """Cauchy scale parameters."""
         self.gamma_high = 0.3183
         self.gamma_width = 100
@@ -106,7 +105,7 @@ class ModBoard:
             the number of games that reach the endgame will be 52%. I took 965 centipawns as the endgame point.
 
             1172(не учтитывая пешки) если брать среднеевзвешенное по типам окончаний и их вероятности
-            """
+        """
         self.endgame_point_material = 710  # 965
         self.main_mobility = 20  # number of possible moves from the starting position
         self.enemy_mobility = 20  # similarly main_mobility
@@ -384,8 +383,8 @@ class ModBoard:
         return {"N": knight_coeff, "B": bishop_coeff, "R_Q": rook_and_queen_coeff}
 
 
-class OnMovesInfo():
-    def __init__(self, id_game: str, game: chess.pgn.Game, color: str):
+class OnMovesInfo:
+    def __init__(self, id_game: str, game: chess.pgn.Game, color: str, stockfish: Stockfish):
         self.id_game = id_game
         self.game = game
         self.color = color
@@ -396,7 +395,7 @@ class OnMovesInfo():
                                               'bishop_activity_coeff', 'rook_and_queen_activity_coeff'])
         self.moves_df.loc[0] = pd.Series()  # add first empty row
         self.add_new_row = True
-        self.board = ModBoard()
+        self.board = ModBoard(stockfish)
 
         self.generate_moves_data()
 

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chessgizmo"
+version = "0.0.0"
+description = "A library for chess data analysis, visualization, and rating prediction."
+authors = [
+  { name = "tehnik-tehnolog", email = "mail@mail.mail" }
+]
+readme = "README.md"
+requires-python = "==3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "chess",
+    "pandas",
+    "stockfish",
+    "berserk",
+    "mureq",
+    "sqlalchemy",
+    "matplotlib",
+    "numpy",
+    "seaborn",
+    "plotnine",
+    "psycopg2-binary",
+    "aioboto3", # support until april 2026
+    "python-dotenv"
+]
+
+[tool.setuptools]
+packages = ["ChessGizmo"]

@@ -22,21 +22,19 @@ from io import BytesIO
 import aioboto3
 from botocore.config import Config
 import json
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import GizmoConfig
 
 
 class ChessStorage:
-    def __init__(self):
-        self.endpoint = os.getenv('B2_ENDPOINT')
-        self.key_id = os.getenv('B2_KEY_ID')
-        self.app_key = os.getenv('B2_APPLICATION_KEY')
-        self.bucket_name = os.getenv('B2_BUCKET_NAME')
-        self.region = os.getenv('REGION')
+    def __init__(self, config: GizmoConfig = None):
+        cfg = config or GizmoConfig()
+        self.endpoint = cfg.b2_endpoint
+        self.key_id = cfg.b2_key_id
+        self.app_key = cfg.b2_application_key
+        self.bucket_name = cfg.b2_bucket_name
+        self.region = cfg.b2_region
 
-        # Обычный клиент для синхронных функций
+        # Client for synchronous functions
         self.s3_sync = boto3.client(
             service_name='s3',
             endpoint_url=self.endpoint,
@@ -44,7 +42,7 @@ class ChessStorage:
             aws_secret_access_key=self.app_key
         )
 
-        # Конфигурация для корректной подписи S3v4
+        # Configuration for correct S3v4 signing
         self.session = aioboto3.Session()
 
     def upload_buffer(self, buffer, filename):
@@ -52,13 +50,13 @@ class ChessStorage:
         self.s3_sync.upload_fileobj(buffer, self.bucket_name, filename)
 
     def upload_json(self, data_dict, filename):
-        # 1. Сериализуем словарь в JSON-строку
+        # Serializing a dictionary into a JSON string
         json_data = json.dumps(data_dict, indent=4, ensure_ascii=False)
 
         buffer = BytesIO(json_data.encode('utf-8'))
         buffer.seek(0)
 
-        # Используем put_object, так как это проще для передачи ContentType
+        # to transfer ContentType
         self.s3_sync.put_object(
             Bucket=self.bucket_name,
             Key=filename,
@@ -67,7 +65,7 @@ class ChessStorage:
         )
 
     async def download_to_buffer(self, filename, buffer):
-        """Скачивание файла напрямую в BytesIO буфер"""
+        # Downloading a file directly to the BytesIO buffer
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -81,7 +79,7 @@ class ChessStorage:
             buffer.seek(0)
 
     async def download_json(self, filename):
-        # Скачивает JSON файл из B2 и возвращает его как словарь (dict).
+        # Downloads a JSON file from B2 and returns it as a dict
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -98,7 +96,7 @@ class ChessStorage:
 
 
     async def delete_user_folder(self, username: str):
-        """Асинхронное удаление всех файлов пользователя"""
+        # Asynchronous deletion of all user files
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -106,7 +104,7 @@ class ChessStorage:
                 aws_secret_access_key=self.app_key,
                 region_name=self.region
         ) as s3:
-            # Листинг объектов
+            # Listing of objects
             paginator = s3.get_paginator('list_objects_v2')
             async for result in paginator.paginate(Bucket=self.bucket_name, Prefix=f"{username}/"):
                 if 'Contents' in result:
@@ -120,7 +118,7 @@ class ChessStorage:
                     print(f'The user folder {username} was not found')
 
     async def get_url(self, filename, expires=3600):
-        """Генерирует временную ссылку (асинхронно)"""
+        # Generates a temporary link
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -283,9 +281,7 @@ class PieChart:
                 self.repetitions_list.append(0)
 
     def adjust_colors(self):
-        """
-        Adjusts the colors for each even layer, making them slightly darker.
-        """
+        # Adjusts the colors for each even layer, making them slightly darker.
         for i in range(len(self.cmap_array)):
             if i % 2 == 1:
                 self.cmap_array[i] = self.cmap_array[i] * 0.8  # Reduce brightness by 20%
@@ -321,9 +317,7 @@ class OpeningTree(PieChart):
         return image
 
     def visualize(self):
-        """
-        Visualizes the diagram and the chessboard.
-        """
+        # Visualizes the diagram and the chessboard.
         board = chess.Board()
         for ply in self.popular_opening:
             if ply != '~':
