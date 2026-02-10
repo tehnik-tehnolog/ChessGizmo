@@ -4,9 +4,10 @@ import pandas as pd
 import chess.pgn
 import io
 import berserk
-from chess_analyzer import EvalInfo, ModBoard
+from .chess_analyzer import EvalInfo, ModBoard
 from stockfish import Stockfish
-from config import GizmoConfig
+from typing import Optional
+from .config import GizmoConfig
 
 
 class BaseData:
@@ -223,12 +224,12 @@ class ChesscomData(BaseData):
 
 
 class LichessData(BaseData):
-    def __init__(self, username, num_games, config: GizmoConfig = None):
+    def __init__(self, username, num_games, config: Optional[GizmoConfig] = None):
         super().__init__(username=username, num_games=num_games)
 
         self.username = username
         self.num_games = num_games
-        cfg = config or GizmoConfig()
+        cfg = config or GizmoConfig.from_env()
 
         self.token = cfg.lichess_token
         self.games = None

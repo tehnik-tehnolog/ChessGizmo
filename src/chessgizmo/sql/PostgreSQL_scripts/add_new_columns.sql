@@ -1,0 +1,18 @@
+ALTER TABLE games_info
+ADD COLUMN av_opening_mobility_inc REAL DEFAULT -1.0,
+ADD COLUMN av_opening_mobility_dec REAL DEFAULT -1.0,
+ADD COLUMN av_opening_king_safety REAL DEFAULT -1.0,
+ADD COLUMN av_opening_king_openness REAL DEFAULT -1.0,
+ADD COLUMN av_opening_knight_activ_coeff REAL DEFAULT -1.0,
+ADD COLUMN av_opening_bishop_activ_coeff REAL DEFAULT -1.0,
+ADD COLUMN av_opening_rook_queen_activ_coeff REAL DEFAULT -1.0,
+ADD COLUMN av_opening_control REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_endgame_mobility_inc REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_endgame_mobility_dec REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_endgame_king_safety REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_endgame_king_openness REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_endgame_knight_activ_coeff REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_endgame_bishop_activ_coeff REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_endgame_rook_queen_activ_coeff REAL DEFAULT -1.0,
+ADD COLUMN av_mittelspiel_control REAL DEFAULT -1.0,
+ADD COLUMN av_endgame_control REAL DEFAULT -1.0;

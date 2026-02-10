@@ -17,17 +17,19 @@ warnings.filterwarnings('ignore', category=PlotnineWarning)
 import chess
 import chess.svg
 import cairosvg
+from importlib import resources
+from typing import Optional
 import boto3
 from io import BytesIO
 import aioboto3
 from botocore.config import Config
 import json
-from config import GizmoConfig
+from .config import GizmoConfig
 
 
 class ChessStorage:
-    def __init__(self, config: GizmoConfig = None):
-        cfg = config or GizmoConfig()
+    def __init__(self, config: Optional[GizmoConfig] = None):
+        cfg = config or GizmoConfig.from_env()
         self.endpoint = cfg.b2_endpoint
         self.key_id = cfg.b2_key_id
         self.app_key = cfg.b2_application_key
@@ -704,7 +706,9 @@ class AchievementsReport:
             }
 
     def draw_element(self, ax, index, category, pos):
-        img = mpimg.imread('./icons/AchievementsReport/' + self.path_dict[category][index])
+        icon_name = self.path_dict[category][index]
+        with resources.path('chessgizmo.data.icons.AchievementsReport', icon_name) as path:
+            img = mpimg.imread(str(path))
         ax.imshow(img, extent=pos['img_extent'])
         plt.text(pos['title_x'], pos['title_y'], self.title_dict[category][index], horizontalalignment='left',
                  fontsize=8, color='#CAF0F8', style='italic')
@@ -780,6 +784,7 @@ class AchievementsReport:
 
         buffer = BytesIO()
         plt.savefig(buffer, format='png', bbox_inches='tight', pad_inches=0.0)
+        # buffer.seek(0)
         file_name = f'{self.username}/AchievementsReport.png'
         self.storage.upload_buffer(buffer, file_name)
         plt.close()

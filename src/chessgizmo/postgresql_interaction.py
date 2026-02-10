@@ -1,13 +1,15 @@
 from typing import Union, Literal
 from pandas import DataFrame
 from sqlalchemy import create_engine, text, exc
-from config import GizmoConfig
-from dtypes import users_dtypes, games_info_dtypes, games_by_moves_dtypes
+from importlib import resources
+from typing import Optional
+from .dtypes import users_dtypes, games_info_dtypes, games_by_moves_dtypes
+from .config import GizmoConfig
 
 
-def check_database_exists(username: str, config: GizmoConfig = None) -> Union[Literal['blitz', 'rapid'], None]:
+def check_database_exists(username: str, config: Optional[GizmoConfig] = None) -> Union[Literal['blitz', 'rapid'], None]:
     try:
-        cfg = config or GizmoConfig()
+        cfg = config or GizmoConfig.from_env()
         temp_db_url = f'postgresql+psycopg2://{cfg.user}:{cfg.password}@{cfg.host}/postgres'
         temp_engine = create_engine(temp_db_url, echo=False)
         with temp_engine.connect() as connection:
@@ -30,16 +32,17 @@ def check_database_exists(username: str, config: GizmoConfig = None) -> Union[Li
 
 
 class PopulateDB:
-    def __init__(self, schema_name: str, config: GizmoConfig = None):
-        self.schema_name = schema_name
-        cfg = config or GizmoConfig()
+    def __init__(self, schema_name: str, config: Optional[GizmoConfig] = None):
+        # Санитайзинг имени схемы (только буквы, цифры и подчеркивание)
+        self.schema_name = ''.join(c for c in schema_name if c.isalnum() or c == '_')
+        cfg = config or GizmoConfig.from_env()
         self.db_url = f'postgresql+psycopg2://{cfg.user}:{cfg.password}@{cfg.host}/postgres'
         self.engine = create_engine(self.db_url, echo=False)
 
     @staticmethod
-    def check_database_exists(username: str, config: GizmoConfig = None) -> Union[Literal['blitz', 'rapid'], None]:
+    def check_database_exists(username: str, config: Optional[GizmoConfig] = None) -> Union[Literal['blitz', 'rapid'], None]:
         try:
-            cfg = config or GizmoConfig()
+            cfg = config or GizmoConfig.from_env()
             temp_db_url = f'postgresql+psycopg2://{cfg.user}:{cfg.password}@{cfg.host}/postgres'
             temp_engine = create_engine(temp_db_url, echo=False)
             with temp_engine.connect() as connection:
@@ -90,53 +93,50 @@ class PopulateDB:
     def save_df(self, df_users: DataFrame, games_info: DataFrame, games_by_moves: DataFrame):
         try:
             with self.engine.begin() as connection:
-                df_users.to_sql('users', con=connection, if_exists='replace',
-                                      index=False, dtype=users_dtypes,
-                                      schema=self.schema_name)
-                games_info.to_sql('games_info', con=connection, if_exists='replace',
-                                        index=False, dtype=games_info_dtypes,
-                                        schema=self.schema_name)
-                games_by_moves.to_sql('games_by_moves', con=connection, if_exists='replace',
-                                      index=False, dtype=games_by_moves_dtypes,
-                                      chunksize=100000, method='multi',
-                                      schema=self.schema_name)
+                # Установка search_path для текущей транзакции
+                connection.execute(text(f"SET search_path TO {self.schema_name}"))
+
+                # Запись таблиц
+                tables = [
+                    (df_users, 'users', users_dtypes),
+                    (games_info, 'games_info', games_info_dtypes),
+                    (games_by_moves, 'games_by_moves', games_by_moves_dtypes)
+                ]
+
+                for df, name, dtypes in tables:
+                    # chunksize для всех таблиц для стабильности
+                    df.to_sql(name, con=connection, if_exists='replace', index=False,
+                              dtype=dtypes, schema=self.schema_name, chunksize=5000)
+
                 self._add_primary_keys(connection)
-                print(f"Data successfully saved to schema '{self.schema_name}'.")
         except exc.SQLAlchemyError as e:
-            print(f'Error while saving data: {e}')
+            print(f"Save error: {e}")
 
     def _add_primary_keys(self, connection):
         """Adding primary keys to tables"""
+        queries = [
+            f"ALTER TABLE {self.schema_name}.users ADD PRIMARY KEY (username);",
+            f"ALTER TABLE {self.schema_name}.games_info ADD PRIMARY KEY (id_game, id_player);",
+            f"ALTER TABLE {self.schema_name}.games_by_moves ADD PRIMARY KEY (id_game, move_number, main_color);"
+        ]
+        for q in queries:
+            connection.execute(text(q))
+
+    def run_sql_script(self, script_name: str):
+        """
+                Выполняет SQL скрипт, хранящийся внутри пакета.
+                param script_name: Имя файла .sql'
+        """
         try:
-            connection.execute(text(f"""
-                   ALTER TABLE {self.schema_name}.users 
-                   ADD PRIMARY KEY (username);
-               """))
+            script_content = resources.files('chessgizmo.sql.PostgreSQL_scripts').joinpath(script_name).read_text(
+                encoding='utf-8')
 
-            connection.execute(text(f"""
-                   ALTER TABLE {self.schema_name}.games_info 
-                   ADD PRIMARY KEY (id_game, id_player);
-               """))
-
-            connection.execute(text(f"""
-                   ALTER TABLE {self.schema_name}.games_by_moves 
-                   ADD PRIMARY KEY (id_game, move_number, main_color);
-               """))
-
-        except exc.SQLAlchemyError as e:
-            print(f'Error while adding primary keys: {e}')
-
-    def run_sql_script(self, script_path: str):
-        try:
-            with self.engine.connect() as connection:
-                with open(script_path, 'r', encoding='utf-8') as sql_file:
-                    sql_script = sql_file.read()
-                    connection.execute(text(f"SET search_path TO {self.schema_name}"))
-                    connection.execute(text(sql_script))
-                connection.commit()
-            print("SQL script executed successfully.")
+            with self.engine.begin() as connection:
+                connection.execute(text(f"SET search_path TO {self.schema_name}"))
+                connection.execute(text(script_content))
+            print(f"Script {script_name} executed.")
         except Exception as e:
-            print(f'Error while executing SQL script: {e}')
+            print(f"Error executing script {script_name}: {e}")
 
     def get_dataframe(self, query: str) -> Union[DataFrame, None]:
         try:

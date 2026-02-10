@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chessgizmo"
-version = "0.0.0"
-description = "A library for chess data analysis, visualization, and rating prediction."
+version = "0.0.1"
+description = "A library for chess data analysis, visualization and rating prediction."
 authors = [
   { name = "tehnik-tehnolog", email = "mail@mail.mail" }
 ]
 readme = "README.md"
-requires-python = "==3.9"
+requires-python = ">=3.9"
+license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -28,9 +29,17 @@ dependencies = [
     "seaborn",
     "plotnine",
     "psycopg2-binary",
-    "aioboto3", # support until april 2026
-    "python-dotenv"
+    "aioboto3",
+    "python-dotenv",
+    "scikit-learn==1.6.1",
+    "cairosvg",
+    "catboost"
 ]
 
-[tool.setuptools]
-packages = ["ChessGizmo"]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["chessgizmo*"]
+
+[tool.setuptools.package-data]
+"chessgizmo" = ["data/**/*", "sql/**/*", "icons/**/*"]
+#"chessgizmo" = ["**/*.pkl", "**/*.png", "**/*.sql", "**/*.json"]
