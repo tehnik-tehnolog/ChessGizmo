@@ -1,12 +1,12 @@
+from typing import Optional
 import chess
 import mureq as mq
 import pandas as pd
 import chess.pgn
 import io
 import berserk
-from .chess_analyzer import EvalInfo, ModBoard
 from stockfish import Stockfish
-from typing import Optional
+from .chess_analyzer import EvalInfo, ModBoard
 from .config import GizmoConfig
 
 

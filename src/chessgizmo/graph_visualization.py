@@ -2,18 +2,6 @@ from collections import Counter, deque
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import matplotlib
-matplotlib.use('Agg')
-from matplotlib.colors import ListedColormap
-from matplotlib.lines import Line2D
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib.image as mpimg
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from plotnine import *
-from plotnine.exceptions import PlotnineWarning
-import warnings
-warnings.filterwarnings('ignore', category=PlotnineWarning)
 import chess
 import chess.svg
 import cairosvg
@@ -24,6 +12,21 @@ from io import BytesIO
 import aioboto3
 from botocore.config import Config
 import json
+
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.colors import ListedColormap
+from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib.image as mpimg
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+
+from plotnine import *
+from plotnine.exceptions import PlotnineWarning
+import warnings
+warnings.filterwarnings('ignore', category=PlotnineWarning)
+
 from .config import GizmoConfig
 
 
@@ -52,7 +55,7 @@ class ChessStorage:
         self.s3_sync.upload_fileobj(buffer, self.bucket_name, filename)
 
     def upload_json(self, data_dict, filename):
-        # Serializing a dictionary into a JSON string
+        """Serializing a dictionary into a JSON string"""
         json_data = json.dumps(data_dict, indent=4, ensure_ascii=False)
 
         buffer = BytesIO(json_data.encode('utf-8'))
@@ -67,7 +70,7 @@ class ChessStorage:
         )
 
     async def download_to_buffer(self, filename, buffer):
-        # Downloading a file directly to the BytesIO buffer
+        """Downloading a file directly to the BytesIO buffer"""
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -81,7 +84,7 @@ class ChessStorage:
             buffer.seek(0)
 
     async def download_json(self, filename):
-        # Downloads a JSON file from B2 and returns it as a dict
+        """Downloads a JSON file from B2 and returns it as a dict"""
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -98,7 +101,7 @@ class ChessStorage:
 
 
     async def delete_user_folder(self, username: str):
-        # Asynchronous deletion of all user files
+        """Asynchronous deletion of all user files"""
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -120,7 +123,7 @@ class ChessStorage:
                     print(f'The user folder {username} was not found')
 
     async def get_url(self, filename, expires=3600):
-        # Generates a temporary link
+        """Generates a temporary link"""
         async with self.session.client(
                 service_name='s3',
                 endpoint_url=self.endpoint,
@@ -283,7 +286,7 @@ class PieChart:
                 self.repetitions_list.append(0)
 
     def adjust_colors(self):
-        # Adjusts the colors for each even layer, making them slightly darker.
+        """Adjusts the colors for each even layer, making them slightly darker."""
         for i in range(len(self.cmap_array)):
             if i % 2 == 1:
                 self.cmap_array[i] = self.cmap_array[i] * 0.8  # Reduce brightness by 20%
@@ -319,7 +322,7 @@ class OpeningTree(PieChart):
         return image
 
     def visualize(self):
-        # Visualizes the diagram and the chessboard.
+        """Visualizes the diagram and the chessboard."""
         board = chess.Board()
         for ply in self.popular_opening:
             if ply != '~':
