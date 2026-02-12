@@ -138,6 +138,7 @@ class ChessStorage:
                 ExpiresIn=expires
             )
 
+
 class PieChart:
     def __init__(self, input_array, threshold, layer) -> None:
         self.input_array = input_array
