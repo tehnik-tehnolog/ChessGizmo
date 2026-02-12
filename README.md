@@ -68,22 +68,22 @@ ChessGizmo_Project/
 │       └── sql/                     # SQL scripts for database analytics
 ```
 
-## Data Visualization
+## 🧮 Data Visualization
 The `graph_visualization` module is responsible for converting raw chess data into visual analytical reports. The main types of graphs generated and their purposes are presented below:
 - **Opening Tree**: A sunburst chart displaying the opening repertoire for White or Black. The center is the first move, and the following circles represent the branching of variations. Helps analyze the diversity of openings and find the most effective lines.
-<img width="581" height="620" alt="PieChart" src="https://github.com/user-attachments/assets/4d18331c-6049-4b3f-bf44-db3afe2ed5c6" />
+<img width="581" height="620" alt="PieChart" src="https://github.com/user-attachments/assets/5f75af4f-583c-4469-a3c8-06a9326bbbf2" />
 
 - **Heatmap**: Visualizes the density of piece movements on the chessboard. Allows you to instantly identify dominant zones of control and the most frequently used squares (for example, concentration in the center on the squares $d4, d5, e4, e5$). Color intensity corresponds to the number of square visits.
-<img width="767" height="710" alt="Heatmap" src="https://github.com/user-attachments/assets/c030a1a9-6ed3-4460-a74d-e33877455b92" />
+<img width="767" height="710" alt="Heatmap" src="https://github.com/user-attachments/assets/d941ab18-f550-4e96-87a2-e68b7a75cba7" />
 
 - **Marked Raincloud** (Activity Distribution): Compares the activity of your pieces (rooks, queens, knights, and bishops) with the distribution of similar values ​​for players with a certain rating. The vertical "You" line clearly shows whether you play more actively or passively than average in the middlegame and endgame.
-<img width="640" height="480" alt="MarkedRaincloud" src="https://github.com/user-attachments/assets/0c8c11e1-30a3-4a44-9411-e929ad54943b" />
+<img width="640" height="480" alt="MarkedRaincloud" src="https://github.com/user-attachments/assets/9c9761a3-9a43-48c3-8818-d06cf99d8eda" />
 
 - **Versus Violin** (Comparative Analysis): Violin plots, which show the probability density of various game factors (piece activity, attack/defense balance) compared between game stages (Opening vs. Middlegame/Endgame). These plots allow you to identify how your style changes as you move into the deeper stages of a game.
-<img width="1486" height="488" alt="VersusViolin" src="https://github.com/user-attachments/assets/3c97cbef-b011-4d14-86b6-0dc17857cf2b" />
+<img width="1486" height="488" alt="VersusViolin" src="https://github.com/user-attachments/assets/c976769d-3ad7-45fe-9f85-ed45b43a1aa0" />
 
 - **Achievements Report**: A summary card displaying the player's average rating predicted by the ML model for different game outcomes (Win/Draw/Lose), as well as a system of achievement badges. Badges are automatically awarded based on playing style, such as activity in the opening ("Strong Development") or a tendency to castling to a specific flank.
-<img width="1470" height="1155" alt="AchievementsReportEn" src="https://github.com/user-attachments/assets/f6d48ee4-1cb5-4371-b80f-5821d0b6e71f" />
+<img width="1470" height="1155" alt="AchievementsReportEn" src="https://github.com/user-attachments/assets/bdbbc73c-ea8b-4648-8cb3-bd8aa2f23c82" />
 
 
 ## 🛠️ Installation
@@ -295,25 +295,23 @@ ChessGizmoProject/
 ```
 
 
-## Визуализация данных
+## 🧮 Визуализация данных
 Модуль `graph_visualization` отвечает за преобразование сырых шахматных данных в наглядные аналитические отчеты. Ниже представлены основные типы генерируемых графиков и их назначение:
 - **Opening Tree** (Дерево дебютов): Радиальная диаграмма (Sunburst chart), отображающая репертуар дебютов за белых или черных. Центр — первый ход, последующие круги — ветвление вариантов. Помогает проанализировать разнообразие дебютов и найти наиболее эффективные линии.
-<img width="581" height="620" alt="PieChart" src="https://github.com/user-attachments/assets/4d18331c-6049-4b3f-bf44-db3afe2ed5c6" />
+<img width="581" height="620" alt="PieChart" src="https://github.com/user-attachments/assets/5f75af4f-583c-4469-a3c8-06a9326bbbf2" />
 
 - **Heatmap** (Тепловая карта ходов): Визуализирует плотность перемещения фигур по шахматной доске. Позволяет мгновенно определить доминирующие зоны контроля и наиболее часто используемые поля (например, концентрация в центре на полях $d4, d5, e4, e5$). Интенсивность цвета соответствует количеству посещений поля.
-<img width="767" height="710" alt="Heatmap" src="https://github.com/user-attachments/assets/c030a1a9-6ed3-4460-a74d-e33877455b92" />
-
+<img width="767" height="710" alt="Heatmap" src="https://github.com/user-attachments/assets/d941ab18-f550-4e96-87a2-e68b7a75cba7" />
 
 - **Marked Raincloud** (Распределение активности): Сравнивает показатели активности ваших фигур (ладей, ферзей, коней и слонов) с распределением аналогичных показателей у игроков с определенным рейтингом. Вертикальная линия «You» наглядно показывает, играете ли вы активнее или пассивнее среднего уровня в миттельшпиле и эндшпиле.
-<img width="640" height="480" alt="MarkedRaincloud" src="https://github.com/user-attachments/assets/0c8c11e1-30a3-4a44-9411-e929ad54943b" />
-
+<img width="640" height="480" alt="MarkedRaincloud" src="https://github.com/user-attachments/assets/9c9761a3-9a43-48c3-8818-d06cf99d8eda" />
 
 - **Versus Violin** (Сравнительный анализ): Скрипичные диаграммы (Violin plots), которые показывают плотность вероятности различных игровых коэффициентов (активность фигур, баланс атаки и защиты) в сравнении между стадиями игры (Opening vs Middlegame/Endgame). Позволяют выявить, как меняется ваш стиль при переходе в глубокую стадию партии.
-<img width="1486" height="488" alt="VersusViolin" src="https://github.com/user-attachments/assets/3c97cbef-b011-4d14-86b6-0dc17857cf2b" />
+<img width="1486" height="488" alt="VersusViolin" src="https://github.com/user-attachments/assets/c976769d-3ad7-45fe-9f85-ed45b43a1aa0" />
 
 
 - **Achievements Report** (Отчет о достижениях): Сводная карточка, отображающая средний предсказанный ML-моделью рейтинг игрока для разных исходов партии (Win/Draw/Lose), а также систему значков-ачивок. Значки автоматически присваиваются на основе стиля игры, например, за активность в дебюте («Сильное развитие») или склонность к рокировке на конкретный фланг.
-<img width="1672" height="1155" alt="AchievementsReport" src="https://github.com/user-attachments/assets/04feaa2d-6ad0-4555-9c9c-8be5809be131" />
+<img width="1672" height="1155" alt="AchievementsReport" src="https://github.com/user-attachments/assets/202fbfeb-743a-43fb-892a-0f3fcf33b383" />
 
 
 ## 🛠️ Установка
