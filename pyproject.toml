@@ -7,7 +7,7 @@ name = "chessgizmo"
 version = "0.0.1"
 description = "A library for chess data analysis, visualization and rating prediction."
 authors = [
-  { name = "tehnik-tehnolog", email = "mail@mail.mail" }
+  { name = "tehnik-tehnolog", email = "pavelkos91011@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.9"

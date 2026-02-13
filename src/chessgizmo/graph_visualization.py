@@ -529,7 +529,7 @@ class VersusViolin:
         self.sample = sample
         self.storage = storage
         self.scheme = pd.DataFrame(columns=['object for comparison', 'value', 'parameter for comparison', 'class'])
-        self.JACE_COLOR = ["#E69F00", "#56B4E9", "#C62E2E", "#257180"]
+        self.JACE_COLOR = ['#E69F00', '#56B4E9', '#C62E2E', '#257180']
         self.order = ['bishop', 'knight', 'inc', 'dec']
         self.class_order = ['♞ VS ♝ in opening', '♞ VS ♝ in middle-/endgame', '⚔ VS ☗ in opening',
                             '⚔ VS ☗ in middle-/endgame']
@@ -621,7 +621,7 @@ class VersusViolin:
 
         buffer = BytesIO()
         violin.save(buffer, format='png', verbose=False)
-        filename = f"{self.username}/VersusViolin.png"
+        filename = f'{self.username}/VersusViolin.png'
         self.storage.upload_buffer(buffer, filename)
         buffer.close()
 
@@ -756,7 +756,7 @@ class AchievementsReport:
             x_pos = start_x + i * (rect_width + gap)
             rect = patches.FancyBboxPatch(
                 (x_pos, 0.72), rect_width, 0.12,
-                boxstyle="round,pad=0.01", edgecolor='none', facecolor=color
+                boxstyle='round,pad=0.01', edgecolor='none', facecolor=color
             )
             ax.add_patch(rect)
             center_x = x_pos + rect_width / 2
@@ -789,7 +789,7 @@ class AchievementsReport:
         buffer = BytesIO()
         plt.savefig(buffer, format='png', bbox_inches='tight', pad_inches=0.0)
         # buffer.seek(0)
-        file_name = f'{self.username}/AchievementsReport.png'
+        file_name = f'{self.username}/AchievementsReport_{self.language}.png'
         self.storage.upload_buffer(buffer, file_name)
         plt.close()
 

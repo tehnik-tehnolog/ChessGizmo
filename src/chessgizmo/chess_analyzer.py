@@ -34,9 +34,9 @@ class EvalInfo:
         return sum(part_of_game) / len(part_of_game)
 
     def generate_ACP_info(self):
-        opening_fil = self.CP_loss_df["game_phase"] == "opening"
-        mittelspiel_fil = self.CP_loss_df["game_phase"] != "opening"
-        endgame_fil = self.CP_loss_df["game_phase"] == "endgame"
+        opening_fil = self.CP_loss_df['game_phase'] == 'opening'
+        mittelspiel_fil = self.CP_loss_df['game_phase'] != 'opening'
+        endgame_fil = self.CP_loss_df['game_phase'] == 'endgame'
 
         self.opening_moves = self.CP_loss_df[f'{self.column}'].loc[opening_fil].to_list()
         self.mittel_end_spiel_moves = self.CP_loss_df[f'{self.column}'].loc[mittelspiel_fil].to_list()
@@ -101,12 +101,12 @@ class ModBoard:
             SOURCE: Fundamental Chess Endings by GM Muller & IM Lamprecht © 2001
             The book uses a dataset ChessBase Mega Database Collection 2001
             Where the rating range of 50-percentile players is 2400 - 2900. If we take a sample from my dataset
-            with such a range, then with a material value of 965 centipawns,
-            the number of games that reach the endgame will be 52%. I took 965 centipawns as the endgame point.
+            with such a range, then with a material value of 710 centipawns,
+            the number of games that reach the endgame will be 52%. I took 710 centipawns as the endgame point.
 
-            1172(не учтитывая пешки) если брать среднеевзвешенное по типам окончаний и их вероятности
+            1172 (not taking into account pawns) if we take the weighted average of the types of endings and their probabilities
         """
-        self.endgame_point_material = 710  # 965
+        self.endgame_point_material = 710
         self.main_mobility = 20  # number of possible moves from the starting position
         self.enemy_mobility = 20  # similarly main_mobility
 
@@ -172,11 +172,11 @@ class ModBoard:
 
     def game_phase(self, ply: int):
         if ply <= 14:
-            return "opening"
+            return 'opening'
         elif self.pieces_material <= self.endgame_point_material:
-            return "endgame"
+            return 'endgame'
         else:
-            return "mittelspiel"
+            return 'mittelspiel'
 
     def mobility(self):
         # Mobility

@@ -11,14 +11,14 @@ class GizmoConfig:
     port: int = 6543
     user: Optional[str] = None
     password: Optional[str] = None
-    database: str = "postgres"
+    database: str = 'postgres'
 
     # Backblaze B2
     b2_endpoint: Optional[str] = None
     b2_key_id: Optional[str] = None
     b2_application_key: Optional[str] = None
-    b2_bucket_name: str = "ChessGizmo"
-    b2_region: str = "eu-central-003"
+    b2_bucket_name: str = 'ChessGizmo'
+    b2_region: str = 'eu-central-003'
 
     # Lichess API
     lichess_token: Optional[str] = None
@@ -57,12 +57,12 @@ class GizmoConfig:
     def validate_b2(self):
         """Checking B2 storage parameters"""
         required = ['b2_endpoint', 'b2_key_id', 'b2_application_key']
-        self._check_required(required, "Backblaze B2")
+        self._check_required(required, 'Backblaze B2')
 
     def validate_lichess(self):
         """Lichess token verification"""
         if not self.lichess_token:
-            raise ValueError("LICHESS_TOKEN must be provided for data fetching.")
+            raise ValueError('LICHESS_TOKEN must be provided for data fetching.')
 
     def _check_required(self, fields_list: list, service_name: str):
         missing = [f for f in fields_list if getattr(self, f) is None]
